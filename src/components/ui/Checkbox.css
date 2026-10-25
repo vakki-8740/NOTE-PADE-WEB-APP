@@ -1,0 +1,49 @@
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.check input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+.check .box {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex: 0 0 auto;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.check .box svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.check input:checked + .box {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check input:checked + .box svg {
+  opacity: 1;
+}
+.check input:focus-visible + .box {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.check.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

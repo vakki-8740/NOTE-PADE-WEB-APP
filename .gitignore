@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Reference-only source material (not part of the shipped app): the
+# user-provided UI kit ZIP contents and its Google Drive download cache.
+/ui-library-source/
+/google_drive/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

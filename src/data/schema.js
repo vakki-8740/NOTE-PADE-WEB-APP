@@ -56,6 +56,10 @@ export function createFolder(overrides = {}) {
     name: 'New Folder',
     parentId: ROOT_FOLDER_ID, // supports nested folders/subfolders
     color: null,
+    // 'notes' = regular folder shown under "Folders"; 'developer' = shown
+    // under the dedicated "Developer Workspace" section. Subfolders are
+    // considered part of whichever section their top-level ancestor is in.
+    section: 'notes',
     createdAt: now,
     updatedAt: now,
     ...overrides,

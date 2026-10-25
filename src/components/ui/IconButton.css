@@ -1,0 +1,76 @@
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    transform 0.15s;
+}
+.icon-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.icon-btn:active {
+  transform: scale(0.94);
+}
+.icon-btn.sm {
+  width: 28px;
+  height: 28px;
+}
+.icon-btn.lg {
+  width: 42px;
+  height: 42px;
+}
+
+.icon-btn.outline {
+  border-color: var(--border);
+  background: var(--card);
+}
+.icon-btn.outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon-btn.filled {
+  background: var(--accent);
+  color: #fff;
+}
+.icon-btn.filled:hover {
+  opacity: 0.9;
+  background: var(--accent);
+}
+
+.icon-btn.soft {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-btn.soft:hover {
+  opacity: 0.85;
+}
+
+.icon-btn.danger {
+  color: var(--no);
+}
+.icon-btn.danger:hover {
+  background: var(--no-soft);
+}
+
+.icon-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

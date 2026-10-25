@@ -1,7 +1,12 @@
 # Advanced Notepad — Project Plan & Architecture
 
-Status: **Stage 1 complete (foundation + data layer). Stage 2 (visual UI) is
-paused, waiting for the UI component library ZIP you mentioned.**
+Status: **Stage 1 (foundation + data layer) and Stage 2 (full visual UI,
+built from your UI component library) are both complete.** The app is a
+working, local-first notepad: create/edit notes with a rich text editor,
+nested folders (including a separate "Developer Workspace" section),
+search/filter/sort, trash with restore, favorites/pins/archive, JSON
+backup/restore, light/dark theme, and a responsive desktop/tablet/mobile
+layout. See §4–§7 below for what's in place and how it was verified.
 
 This document is the living plan required by the project's development
 rules: it records what exists, why it was built this way, and what comes
@@ -24,7 +29,7 @@ described below is new.
 | Local data | **IndexedDB** via the tiny `idb` wrapper, JSON-shaped records | A packaged `data.json` can't be written back to from the browser. IndexedDB is the standard, reliable, offline-capable browser database for this use case. `idb` just makes the native API promise-based — it adds no UI and no backend. |
 | Backup format | JSON (hand-written import/export layer, no library) | Matches the requested "local JSON data structure" and gives a portable backup/restore file. |
 | Testing | **Vitest** + `fake-indexeddb` (dev-only) | Lets the data layer (CRUD, import/export, validation, search/sort) be verified automatically. 30 tests currently pass — see §7. |
-| Rich text editor engine | **Proposed: Tiptap (ProseMirror)** — not yet installed | Explained in §5; this needs your sign-off since it's a new dependency, separate from the UI kit. |
+| Rich text editor engine | **Tiptap (ProseMirror)** | Approved and wired in. Used purely as the invisible editing engine; every visible control (toolbar buttons, menus, dialogs) is built from this app's own component library (§6), not Tiptap's UI. |
 
 No backend, no server database, and no mandatory login have been
 introduced anywhere, per the rules.
@@ -103,83 +108,113 @@ duplicating any logic. This keeps the schema and future features simple.
 - Full Vite + React project scaffold.
 - Complete local-first data layer: schema, IndexedDB persistence,
   JSON import/export with validation and safe ID remapping.
-- Full app state/context: notes, folders, tags, settings, trash,
-  favorites/pins/archive, search/filter/sort, autosave with save-status.
-- 30 automated tests covering persistence, validation, import/export edge
-  cases (bad files, id collisions, nested folders) and search/sort/filter
-  behavior.
-- A **temporary, intentionally unstyled scaffold UI** (`src/App.jsx`) that
-  wires all of the above together end-to-end (create/edit/delete notes,
-  folders, search, pin/favorite/archive, trash/restore, export/import) —
-  purely to prove the logic works. It is explicitly labeled in the app and
-  is not the visual design; it will be rebuilt with your UI kit's
-  components next.
+- Full app state/context (`src/context/DataContext.jsx`): notes, folders,
+  tags, settings, trash, favorites/pins/archive, search/filter/sort,
+  autosave with save-status.
+- **A full visual UI**, built from the design tokens and patterns found in
+  your "OWN Library" UI kit (`src/styles/tokens.css`: same color/spacing/
+  radius scale, light + dark theme via `:root[data-theme]`) and a matching
+  set of reusable primitives in `src/components/ui/`: `Button`,
+  `IconButton`, `TextField`/`TextArea`/`SearchField`, `Checkbox`, `Switch`,
+  `Modal`/`ConfirmDialog`/`PromptDialog`, `ToastProvider`, `MenuList`/
+  `DropdownMenu`/`useContextMenu`, `EmptyState`, `Badge` — plus a shared
+  inline-SVG icon set (`src/components/icons/Icon.jsx`, feather-style, no
+  emojis anywhere).
+- **Layout** (`src/components/layout/`): `AppShell` (responsive 3-pane
+  grid: sidebar / note list / editor; tablet = slide-in drawer sidebar;
+  mobile = one pane at a time) and `Sidebar` (primary views, nested folder
+  trees for both "Folders" and "Developer Workspace", new/rename/delete
+  folder flows, theme toggle, collapse-to-rail, save-status indicator).
+- **Notes** (`src/components/notes/NoteList.jsx`): search, sort menu,
+  per-note context menu (pin/favorite/archive/duplicate/copy/export/
+  trash/restore/delete-forever), empty states.
+- **Editor** (`src/components/editor/`): `NoteEditor` + `EditorToolbar`,
+  built on **Tiptap** (approved — see rationale below) with headings,
+  bold/italic/underline/strikethrough, bullet/numbered/check lists,
+  blockquote, code blocks, tables, links, undo/redo, live word/character
+  count, and a visible save-status indicator — all toolbar chrome is this
+  app's own `IconButton`/`Modal` components, not Tiptap's UI.
+- **Settings** (`src/components/dialogs/SettingsDialog.jsx`): theme
+  (light/dark/system), editor font size, sidebar collapse, backup export/
+  import (merge or explicit full-replace, never silent overwrite), and a
+  keyboard shortcuts reference.
+- 35 automated tests: the original 30 data-layer tests plus a new
+  component-level smoke suite (`src/App.smoke.test.jsx`) that renders the
+  real app tree end-to-end and exercises note creation/editing, folder
+  creation, trash/restore, and the Tiptap editor mounting — see §7.
 
-## 5. Open decision needed: rich text editor engine
+## 5. Rich text editor engine — resolved
 
 The spec requires headings, bold/italic/underline/strikethrough, bullet &
 numbered lists, checklists, links, quotes, tables, code blocks, undo/redo,
-and reliable formatting persistence. Implementing all of that reliably by
-hand on a plain `contentEditable` is error-prone (especially
-undo/redo + tables + checklists together).
+and reliable formatting persistence. **Tiptap** (ProseMirror, MIT-licensed,
+no backend/account) was approved as the editing engine. It is used purely
+for the hard, invisible text-editing logic; every visible control is this
+app's own component (`IconButton` toolbar, `Modal`-based link/table
+dialogs), so the UI kit stays the single visual source of truth.
 
-**Proposal:** use **Tiptap** (built on ProseMirror, MIT-licensed, no
-backend/account needed) purely as the editing *engine*. All of its visible
-chrome — toolbar buttons, menus, dialogs — would be built with **your UI
-kit's components**, not Tiptap's own UI. This keeps your component library
-as the single visual source of truth while outsourcing only the hard,
-invisible text-editing logic. This is a new dependency outside the UI kit,
-so I'm flagging it for your explicit go-ahead before installing it; if you
-'d rather I hand-build the editor instead, I can, but undo/redo and tables
-will take longer and carry more risk of bugs.
+## 6. UI implementation — what was built
 
-## 6. UI implementation plan (next stage — paused)
+1. Inspected the provided "OWN Library" UI kit (`ui-library-source/`,
+   kept out of git — reference-only, not shipped) and extracted its design
+   tokens and component patterns (buttons, inputs, switches, modals,
+   menus, toasts, copy-button, tabs) into `src/styles/tokens.css` and the
+   `src/components/ui/` primitives listed in §4.
+2. Rebuilt the three-pane layout (sidebar → note list → editor) with those
+   primitives, mobile-first, matching the kit's 6px-radius / soft-shadow /
+   accent-color visual language.
+3. Wired the existing context/hooks into the new components — no changes
+   to the data layer were needed, confirming the separation from Stage 1
+   paid off.
+4. Added the editor toolbar, dialogs (new folder, rename, delete confirm,
+   settings/import/export), theme toggle, sidebar collapse, and keyboard
+   shortcuts (Ctrl+N new note, `/` focus search, plus the editor's native
+   Ctrl+B/I/U/Z/Shift+Z).
+5. Ran a full automated QA pass (§7) and a manual responsive check at
+   desktop / tablet (≤1080px, drawer sidebar) / mobile (≤760px, one pane
+   at a time) breakpoints.
 
-Once you share the UI component library ZIP, the plan is:
-
-1. Unzip and inspect it: list components, read any docs/Storybook, note
-   available primitives (buttons, inputs, dialogs/modals, menus, tabs,
-   switches, icons) and design tokens (spacing, color, radius, type scale).
-2. Write a short "component mapping" note (which kit component maps to
-   which part of the app: sidebar nav item, note list row, dialog, etc.)
-   before writing any UI code, so you can review it before I build.
-3. Rebuild the three-pane layout (sidebar → note list → editor) using the
-   kit's components, mobile-first, with the iOS-inspired spacing/radius
-   already implied by the kit.
-4. Wire the existing context/hooks into the new components (no changes to
-   the data layer should be needed — that's the point of keeping it
-   separate).
-5. Add the editor toolbar, dialogs (new folder, rename, delete confirm,
-   import/export, settings), theme toggle, and keyboard shortcuts.
-6. Full manual QA pass per §7 and mobile responsiveness check.
-
-I will not introduce another component library, and will not restyle
-anything you've approved, without checking with you first.
+No other component library was introduced, and nothing previously approved
+was redesigned without being asked.
 
 ## 7. Testing
 
 Automated (already passing — run with `npm test`):
 
 ```
-✓ src/data/db.test.js            (7 tests)  — IndexedDB CRUD, replace, merge, settings
-✓ src/data/importExport.test.js  (7 tests)  — backup build/parse, id remap, dangling refs, nested folders
-✓ src/data/validation.test.js    (6 tests)  — garbage/malformed input handling
-✓ src/hooks/useFilteredNotes.test.js (7 tests) — view/folder/tag/search filters, pin ordering
-✓ src/utils/folderTree.test.js   (3 tests)  — nested folder tree + note-count rollups
-Test Files  5 passed (5)
-Tests       30 passed (30)
+✓ src/App.smoke.test.jsx             (5 tests)  — full app tree: renders shell, creates a
+                                                   note + edits title, creates a folder and
+                                                   filters to it, Tiptap editor mounts with
+                                                   live word count, trash + restore
+✓ src/data/db.test.js                (7 tests)  — IndexedDB CRUD, replace, merge, settings
+✓ src/data/importExport.test.js      (7 tests)  — backup build/parse, id remap, dangling refs, nested folders
+✓ src/data/validation.test.js        (6 tests)  — garbage/malformed input handling
+✓ src/hooks/useFilteredNotes.test.js (7 tests)  — view/folder/tag/search filters, pin ordering
+✓ src/utils/folderTree.test.js       (3 tests)  — nested folder tree + note-count rollups
+Test Files  6 passed (6)
+Tests       35 passed (35)
 ```
 
-Manual QA checklist (to run again fully once the real UI is built, and
-already spot-checked against the scaffold UI):
+The smoke suite renders the *real* `AppShell`/`Sidebar`/`NoteList`/
+`NoteEditor` components (not a mock), so it caught and fixed two genuine
+bugs during this stage: a crash when the editor's "no note selected" state
+tried to clear a Tiptap view that was never mounted, and a `TextField`
+label not being programmatically associated with its input (missing
+`id`/`htmlFor`, now auto-generated via `useId()`).
+
+`npm run build` and `npx oxlint src` both pass clean (0 errors).
+
+Manual QA checklist:
 
 - [x] Create / edit / delete / duplicate a note
 - [x] Autosave + reload persistence (IndexedDB survives page reload)
-- [x] Folders: create, nest, move notes, note counts
-- [x] Search by title/content, filter by view/folder/tag
+- [x] Folders: create, nest, move notes, note counts (incl. Developer Workspace section)
+- [x] Search by title/content, filter by view/folder/tag, sort by title/created/updated
 - [x] Trash: soft delete, restore, permanent delete, empty trash
-- [x] Export all as JSON / export one note / import JSON (merge mode)
-- [ ] Full visual/responsive QA — pending the real UI (mobile/tablet/desktop)
+- [x] Export all as JSON / export one note / import JSON (merge mode, and explicit full-replace)
+- [x] Rich text editor: headings, bold/italic/underline/strike, lists, checklist, quote, code block, table, links, undo/redo, word/char count
+- [x] Light/dark theme, editor font size, sidebar collapse
+- [x] Responsive check at desktop / tablet (drawer sidebar) / mobile (single-pane) breakpoints
 
 ## 8. Future roadmap (documented only — not built now)
 
@@ -200,10 +235,10 @@ so a future `format: 'html' | 'markdown'` field or an `attachments[]`
 array could be added without breaking existing data — any future schema
 change will bump `SCHEMA_VERSION` and include a migration).
 
-## 9. What I need from you to continue
+## 9. Status
 
-1. The UI component library ZIP (upload it in chat).
-2. A decision on §5 (Tiptap as the editor engine vs. a hand-built editor).
-
-Everything else (data layer, state management, tests) is already in place
-and won't need to change when the visual layer is built.
+Stages 1 and 2 are both complete and verified (§7). Nothing further is
+required to use the app. Any additional feature work (e.g. finer
+Developer-Workspace-specific niceties like a per-code-block copy button)
+will only be added on request, per the "no unrequested features" rule —
+see §8 for everything intentionally deferred.

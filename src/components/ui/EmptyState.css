@@ -1,0 +1,22 @@
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  margin: auto;
+  max-width: 320px;
+}
+.empty-art {
+  display: inline-flex;
+  color: var(--accent);
+  opacity: 0.85;
+  margin-bottom: 14px;
+}
+.empty-state h3 {
+  font-size: 1rem;
+  margin: 0 0 6px;
+}
+.empty-state p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  margin: 0 0 18px;
+}
